@@ -1,0 +1,21 @@
+[Unit]
+Description=HNG14 Anomaly Detection Engine
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/anomaly-detector/detector
+ExecStart=/usr/bin/python3 /opt/anomaly-detector/detector/main.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=anomaly-detector
+
+# Give it cap to run iptables
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

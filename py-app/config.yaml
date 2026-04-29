@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────
+#  Anomaly Detection Engine — Configuration
+# ─────────────────────────────────────────────
+
+# Path to the Nginx access log to tail
+log_path: "/var/log/nginx/access.log"
+
+# Audit / structured event log written by the tool itself
+audit_log_path: "audit.log"
+
+# ── Sliding window sizes ──────────────────────
+per_ip_window_seconds: 60       # deque window for per-IP rate
+global_window_seconds: 60       # deque window for global rate
+
+# ── Rolling baseline ──────────────────────────
+baseline_window_minutes: 30     # how far back to keep per-second counts
+baseline_recalc_interval: 60    # seconds between baseline recomputations
+warmup_minutes: 10              # no bans fired before this many minutes
+
+# Floor values — prevent instability on quiet servers
+effective_mean_floor: 2.0
+effective_stddev_floor: 0.5
+
+# Minimum data points (seconds) a time-slot must have before it's used
+timeslot_min_seconds: 300       # 5 minutes = 300 seconds
+
+# Hard ceiling applied DURING warm-up (req/s global rate)
+warmup_hard_ceiling: 50
+
+# ── Anomaly thresholds ────────────────────────
+zscore_threshold: 3.0           # standard Z-score threshold
+multiplier_threshold: 5.0       # rate > mean × this → anomalous
+
+# Lowered thresholds when error-surge is also detected
+error_surge_zscore_threshold: 2.0
+error_surge_multiplier_threshold: 3.0
+
+
+# Error surge: IP error rate > baseline_error_rate × this factor → lower thresholds
+error_surge_factor: 3.0
+
+# ── Unban / exponential backoff ───────────────
+ban_durations_minutes:
+  - 10      # 1st ban
+  - 30      # 2nd ban
+  - 120     # 3rd ban
+  # beyond 3rd → permanent
+
+unban_check_interval: 30        # seconds between unban sweeps
+
+# ── Slack ─────────────────────────────────────
+
+slack_channel: ${SLACK_CHANNEL}  # informational only — URL goes above
+slack_webhook_url: ${SLACK_WEBHOOK_URL}
+# ── Dashboard ─────────────────────────────────
+dashboard_port: 8080            # set to 0 to use terminal TUI only
+dashboard_refresh_seconds: 3
+
+# ── Nginx log format ──────────────────────────
+# Must match the log_format directive in nginx.conf
+# Default combined-ish: $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent
+log_format: "combined"
