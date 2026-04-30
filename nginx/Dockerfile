@@ -5,7 +5,8 @@ RUN apk add --no-cache \
     certbot \
     certbot-nginx \
     curl \
-    bash
+    bash \
+    openssl
 
 # Create directories for certificates and renewal scripts
 RUN mkdir -p /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt

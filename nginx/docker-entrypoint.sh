@@ -8,16 +8,29 @@ DOMAIN="${SERVER_DOMAIN:-localhost}"
 EMAIL="${CERTBOT_EMAIL:-admin@example.com}"
 CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
 
-# Only attempt certbot if domain is not localhost and certs don't exist
-if [ "$DOMAIN" != "localhost" ] && [ ! -d "$CERT_DIR" ]; then
-    echo "[nginx-init] Getting Let's Encrypt certificate for $DOMAIN..."
-    
-    # Temporarily start nginx to allow certbot to validate
+mkdir -p "$CERT_DIR"
+mkdir -p /var/www/letsencrypt
+
+# Create a self-signed certificate if none exist yet.
+if [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; then
+    echo "[nginx-init] Creating self-signed certificate for $DOMAIN..."
+    openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "$CERT_DIR/privkey.pem" \
+        -out "$CERT_DIR/fullchain.pem" \
+        -subj "/CN=$DOMAIN"
+fi
+
+# Create a fixed symlink so nginx.conf can always use the same path.
+ln -snf "$CERT_DIR" /etc/letsencrypt/live/localhost
+
+if [ "$DOMAIN" != "localhost" ]; then
+    echo "[nginx-init] Requesting Let's Encrypt certificate for $DOMAIN..."
+
     nginx -g 'daemon off;' &
     NGINX_PID=$!
     sleep 2
-    
-    # Request certificate
+
     certbot certonly \
         --webroot \
         --webroot-path=/var/www/letsencrypt \
@@ -25,8 +38,7 @@ if [ "$DOMAIN" != "localhost" ] && [ ! -d "$CERT_DIR" ]; then
         --agree-tos \
         --email "$EMAIL" \
         -d "$DOMAIN" || true
-    
-    # Stop temporary nginx
+
     kill $NGINX_PID || true
     wait $NGINX_PID 2>/dev/null || true
     sleep 1
